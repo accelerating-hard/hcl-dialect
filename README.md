@@ -162,6 +162,63 @@ cd tests && python3 -m pytest
 
 ![flow](docs/dialect_examples.png)
 
+## Testing Data Layout Transformations
+
+After confirming that the tests work, you should now be able to examine how the code is emitted in MLIR. In the folder `data_layout_tests`, you will find a sample gemm.mlir file that contains the data layout primitives. In the build directory, you can run:
+
+```sh
+./bin/hcl-opt -opt ../data_layout_tests/gemm.mlir | ./bin/hcl-translate -emit-vivado-hls
+```
+
+And it should return the following HLS code:
+```c++
+//===------------------------------------------------------------*- C++ -*-===//
+//
+// Automatically generated file for High-level Synthesis (HLS).
+//
+//===----------------------------------------------------------------------===//
+#include <algorithm>
+#include <ap_axi_sdata.h>
+#include <ap_fixed.h>
+#include <ap_int.h>
+#include <hls_math.h>
+#include <hls_stream.h>
+#include <math.h>
+#include <stdint.h>
+using namespace std;
+void top(
+  int32_t v0[64][64],
+  int32_t v1[64][64],
+  int32_t v2[64][64]
+) {	// L3
+  #pragma HLS array_reshape variable=v0 complete dim=2
+
+  #pragma HLS array_reshape variable=v1 complete dim=2
+
+  #pragma HLS array_reshape variable=v2 complete dim=2
+
+  l_s1_i1: for (int i1 = 0; i1 < 64; i1++) {	// L5
+	l_j1: for (int j1 = 0; j1 < 64; j1++) {	// L6
+	#pragma HLS pipeline II=1
+	  l_k1: for (int k1 = 0; k1 < 64; k1++) {	// L7
+		int32_t v6 = v0[i1][k1];	// L8
+		int32_t v7 = v1[k1][j1];	// L9
+		int32_t v8 = v2[i1][j1];	// L10
+		int32_t v9 = v6 * v7;	// L11
+		int32_t v10 = v9 + v8;	// L12
+		v2[i1][j1] = v10;	// L13
+	  }
+	}
+  }
+}
+
+```
+
+## Running the Emitted HLS Code on an Xilinx FPGA
+
+Running HLS code on an FPGA to test it can be extremely difficult at times. We highly recommend following the tutorial [here](https://github.com/Xilinx/Vitis-Tutorials/tree/2022.1/Getting_Started/Vitis) to get a better understanding of the compilation process.
+
+We have provided `hls.zip` as an artifact that contains everything needed to test our outputted FPGA files. After setting up Vitis 2022.2, you should be able to run the Makefile and test each of the files one by one and see the results in a `csynth.rpt` file in the reports/ directory. 
 
 ## Coding Style
 
@@ -174,3 +231,5 @@ We follow [Google Style Guides](https://google.github.io/styleguide/) and use
 * [ScaleHLS](https://github.com/hanchenye/scalehls)
 * [Torch-MLIR](https://github.com/llvm/torch-mlir)
 * [Polymer](https://github.com/kumasento/polymer)
+
+
